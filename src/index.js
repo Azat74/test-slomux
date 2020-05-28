@@ -12,7 +12,9 @@ import ReactDOM from 'react-dom'
 // При нажатии на "старт" должен запускаться секундомер и через заданный интервал времени увеличивать свое значение на значение интервала
 // При нажатии на "стоп" секундомер должен останавливаться и сбрасывать свое значение
 
-const createStore = (reducer, initialState) => {
+const createStore = (reducer, initialState = {
+  currentInterval: 1
+}) => {
   let currentState = initialState
   const listeners = []
 
@@ -86,9 +88,14 @@ const changeInterval = (value) => ({
 const reducer = (state, action) => {
   switch (action.type) {
   case CHANGE_INTERVAL:
-    return (state += action.payload)
+    return {
+      ...state,
+      currentInterval: (state.currentInterval === 1 && action.payload < 0) ? state.currentInterval : state.currentInterval + action.payload
+    }
   default:
-    return {}
+    return {
+      ...state
+    }
   }
 }
 
@@ -111,20 +118,29 @@ class IntervalComponent extends React.Component {
 }
 
 const Interval = connect(
+  (state) => {
+    return {
+      currentInterval: state.currentInterval,
+    }
+  },
   (dispatch) => ({
     changeInterval: (value) => dispatch(changeInterval(value)),
-  }),
-  (state) => ({
-    currentInterval: state,
   })
 )(IntervalComponent)
 
 class TimerComponent extends React.Component {
   state = {
     currentTime: 0,
-  };
+  }
+
+  componentDidMount() {
+    this.forceUpdate()
+  }
+
+  interval = 0
 
   render() {
+    console.log(this.props)
     return (
       <div style={{ paddingTop: '100px' }}>
         <Interval />
@@ -132,29 +148,34 @@ class TimerComponent extends React.Component {
         <div>
           <button onClick={this.handleStart}>Старт</button>
           <button onClick={this.handleStop}>Стоп</button>
+          {this.props.currentInterval}
         </div>
       </div>
     )
   }
 
-  handleStart() {
-    setTimeout(
+  handleStart = () => {
+    clearInterval(this.interval)
+    this.interval = setInterval(
       () =>
-        this.setState({
-          currentTime: this.state.currentTime + this.props.currentInterval,
+        this.setState(state => {
+          return {
+            currentTime: state.currentTime + this.props.currentInterval,
+          }
         }),
-      this.props.currentInterval
+      this.props.currentInterval * 1000
     )
   }
 
-  handleStop() {
+  handleStop = () => {
+    clearInterval(this.interval)
     this.setState({ currentTime: 0 })
   }
 }
 
 const Timer = connect(
   (state) => ({
-    currentInterval: state,
+    currentInterval: state.currentInterval,
   }),
   () => { }
 )(TimerComponent)
